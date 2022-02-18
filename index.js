@@ -1,37 +1,44 @@
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 
 export class Config {
-    constructor(name) {
+    /**
+     * @param {string} name
+     * @param {object} defaultConfig
+     */
+    constructor(name, defaultConfig = {}) {
         if (!name || typeof name !== 'string') {
             throw new Error(`want: string, got: ${typeof name}`);
         }
         this.name = name;
         this.home = process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'];
         this._mkdir(this.home);
-        this._createConfigFile(this.home, name);
-        const conf = JSON.parse(readFileSync(`${this.home}/.config/${name}.json`, 'utf-8'));
+        this._createConfigFile(defaultConfig);
+        const conf = this._read();
         Object.assign(this, conf);
     }
-    _mkdir(home) {
+    _mkdir() {
         try {
-            readdirSync(`${home}/.config`);
+            readdirSync(`${this.home}/.config`);
         } catch {
-            mkdirSync(`${home}/.config`);
+            mkdirSync(`${this.home}/.config`);
         }
     }
-    _createConfigFile(home, name) {
+    _createConfigFile(defaultConfig = {}) {
         try {
-            statSync(`${home}/.config/${name}.json`);
+            statSync(`${this.home}/.config/${this.name}.json`);
         } catch {
-            writeFileSync(`${home}/.config/${name}.json`, '{}');
+            writeFileSync(`${this.home}/.config/${this.name}.json`, JSON.stringify(defaultConfig, void 0, 4) || '{}');
         }
+    }
+    _read() {
+        return JSON.parse(readFileSync(`${this.home}/.config/${this.name}.json`, 'utf-8'));
     }
     /**
      * @param {string} key key
      * @return {unknown}
      */
     get(key) {
-        const conf = JSON.parse(readFileSync(`${this.home}/.config/${this.name}.json`, 'utf-8'));
+        const conf = this._read();
         Object.assign(this, conf);
         return this[key];
     }
@@ -40,7 +47,7 @@ export class Config {
      * @param {unknown} value value
      */
     set(key, value) {
-        const conf = JSON.parse(readFileSync(`${this.home}/.config/${this.name}.json`, 'utf-8'));
+        const conf = this._read();
         if (value === void 0) {
             delete conf[key];
             delete this[key];
